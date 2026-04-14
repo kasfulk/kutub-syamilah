@@ -1,0 +1,42 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+api
+
+# Test
+coverage.out
+coverage.html
+*.test
+/tmp/report-*.txt
+
+# Build
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Debug
+__debug_bin*
+
+# Agents
+.agents/
+
+# Docs
+.docs/
