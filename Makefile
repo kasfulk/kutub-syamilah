@@ -14,6 +14,10 @@ build:
 run:
 	$(GO) run ./cmd/api
 
+# Run with live-reload (development mode)
+dev:
+	air
+
 # Run tests with race detector and coverage
 test:
 	$(GO) test -v -race -coverprofile=coverage.out ./...
@@ -58,6 +62,7 @@ help:
 	@echo "Available targets:"
 	@echo "  build         - Build the application"
 	@echo "  run           - Run the application"
+	@echo "  dev           - Run with live-reload (Air)"
 	@echo "  test          - Run tests with race detector"
 	@echo "  test-coverage - Run tests with HTML coverage report"
 	@echo "  fmt           - Format code"

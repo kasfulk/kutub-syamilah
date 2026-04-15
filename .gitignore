@@ -15,6 +15,7 @@ coverage.html
 
 # Build
 vendor/
+tmp/
 
 # IDE
 .idea/
