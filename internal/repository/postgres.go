@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,12 +16,23 @@ import (
 
 // PostgresRepo implements KitabRepository using pgx/v5 with a connection pool.
 type PostgresRepo struct {
-	pool *pgxpool.Pool
+	pool     *pgxpool.Pool
+	logLevel string
 }
 
 // NewPostgres creates a new PostgresRepo with the given connection pool.
 func NewPostgres(pool *pgxpool.Pool) *PostgresRepo {
-	return &PostgresRepo{pool: pool}
+	level := os.Getenv("KUTUB_LOG_LEVEL")
+	if level == "" {
+		level = "1"
+	}
+	return &PostgresRepo{pool: pool, logLevel: level}
+}
+
+func (r *PostgresRepo) debugQuery(query string, args ...any) {
+	if r.logLevel == "1" {
+		log.Printf("[DEBUG QUERY] %s | ARGS: %v\n", query, args)
+	}
 }
 
 // ListKitab returns a paginated list of kitab with optional Arabic filters.
@@ -39,6 +52,7 @@ func (r *PostgresRepo) ListKitab(ctx context.Context, f KitabFilter) ([]model.Da
 
 	// Fetch data rows concurrently with count.
 	g.Go(func() error {
+		r.debugQuery(listKitabSQL, judul, kategori, f.Limit, offset)
 		rows, err := r.pool.Query(ctx, listKitabSQL, judul, kategori, f.Limit, offset)
 		if err != nil {
 			return fmt.Errorf("query kitab: %w", err)
@@ -59,6 +73,7 @@ func (r *PostgresRepo) ListKitab(ctx context.Context, f KitabFilter) ([]model.Da
 
 	// Fetch total count concurrently.
 	g.Go(func() error {
+		r.debugQuery(countKitabSQL, judul, kategori)
 		return r.pool.QueryRow(ctx, countKitabSQL, judul, kategori).Scan(&total)
 	})
 
@@ -71,6 +86,7 @@ func (r *PostgresRepo) ListKitab(ctx context.Context, f KitabFilter) ([]model.Da
 // GetKitabByID returns a single kitab by ID or ErrNotFound.
 func (r *PostgresRepo) GetKitabByID(ctx context.Context, id int) (*model.DaftarKitab, error) {
 	var k model.DaftarKitab
+	r.debugQuery(getKitabByIDSQL, id)
 	err := r.pool.QueryRow(ctx, getKitabByIDSQL, id).
 		Scan(&k.ID, &k.Judul, &k.Kategori, &k.PathOrig)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -95,6 +111,7 @@ func (r *PostgresRepo) GetKontenByKitabID(ctx context.Context, kitabID, page, li
 	offset := (page - 1) * limit
 
 	g.Go(func() error {
+		r.debugQuery(listKontenSQL, kitabID, limit, offset)
 		rows, err := r.pool.Query(ctx, listKontenSQL, kitabID, limit, offset)
 		if err != nil {
 			return fmt.Errorf("query konten: %w", err)
@@ -112,6 +129,7 @@ func (r *PostgresRepo) GetKontenByKitabID(ctx context.Context, kitabID, page, li
 	})
 
 	g.Go(func() error {
+		r.debugQuery(countKontenSQL, kitabID)
 		return r.pool.QueryRow(ctx, countKontenSQL, kitabID).Scan(&total)
 	})
 
@@ -135,6 +153,7 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 	offset := (f.Page - 1) * f.Limit
 
 	g.Go(func() error {
+		r.debugQuery(searchKontenSQL, f.Query, kategori, f.Limit, offset)
 		rows, err := r.pool.Query(ctx, searchKontenSQL, f.Query, kategori, f.Limit, offset)
 		if err != nil {
 			return fmt.Errorf("query search: %w", err)
@@ -156,6 +175,7 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 	})
 
 	g.Go(func() error {
+		r.debugQuery(countSearchSQL, f.Query, kategori)
 		return r.pool.QueryRow(ctx, countSearchSQL, f.Query, kategori).Scan(&total)
 	})
 
@@ -167,6 +187,7 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 
 // ListKategori returns a distinct list of all kategori values.
 func (r *PostgresRepo) ListKategori(ctx context.Context) ([]string, error) {
+	r.debugQuery(listKategoriSQL)
 	rows, err := r.pool.Query(ctx, listKategoriSQL)
 	if err != nil {
 		return nil, fmt.Errorf("query kategori: %w", err)

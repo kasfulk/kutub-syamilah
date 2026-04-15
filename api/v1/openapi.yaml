@@ -1,0 +1,529 @@
+openapi: 3.1.0
+info:
+  title: Kutub Syamilah API
+  description: |
+    REST API for the **Kutub Syamilah** digital library — a collection of Arabic Islamic kitab.
+
+    Supports browsing by Arabic **kategori** (category), searching by Arabic **judul** (title),
+    paginated content retrieval, and Arabic **full-text search** powered by PostgreSQL GIN indexes
+    with `websearch_to_tsquery` using the `arabic` regconfig.
+
+    All text fields (judul, kategori, isi_teks) contain **Arabic UTF-8** encoded text.
+    Clients must set `Accept: application/json; charset=utf-8`.
+  version: 1.0.0
+  contact:
+    name: Kutub Syamilah API
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/v1
+    description: Local development
+  - url: https://api.kutub-syamilah.local/v1
+    description: Production
+
+tags:
+  - name: Kitab
+    description: Operations on the kitab (book) catalog
+  - name: Konten
+    description: Operations on kitab content sections
+  - name: Search
+    description: Arabic full-text search across all content
+  - name: Kategori
+    description: Browse available categories
+  - name: System
+    description: Health check and diagnostics
+
+paths:
+  /kitab:
+    get:
+      operationId: listKitab
+      summary: List all kitab
+      description: |
+        Retrieve a paginated list of all kitab. Supports filtering by exact **kategori**
+        (Arabic category name) and partial-match searching on **judul** (Arabic title)
+        using PostgreSQL `ILIKE`.
+      tags:
+        - Kitab
+      parameters:
+        - $ref: "#/components/parameters/KategoriFilter"
+        - $ref: "#/components/parameters/JudulFilter"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated list of kitab
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitabListResponse"
+              example:
+                data:
+                  - id: 1
+                    judul: "منهاج القاصدين"
+                    kategori: "فقه"
+                    path_orig: "/files/minhajul-qashidin.pdf"
+                pagination:
+                  page: 1
+                  limit: 10
+                  total: 1
+                  total_pages: 1
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /kitab/{id}:
+    get:
+      operationId: getKitabById
+      summary: Get kitab by ID
+      description: Retrieve a single kitab by its unique identifier.
+      tags:
+        - Kitab
+      parameters:
+        - $ref: "#/components/parameters/KitabId"
+      responses:
+        "200":
+          description: Single kitab details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitabSingleResponse"
+              example:
+                data:
+                  id: 1
+                  judul: "منهاج القاصدين"
+                  kategori: "فقه"
+                  path_orig: "/files/minhajul-qashidin.pdf"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /kitab/{id}/konten:
+    get:
+      operationId: getKontenByKitabId
+      summary: Get content sections of a kitab
+      description: |
+        Retrieve all sections of a kitab, paginated. Each section contains Arabic text
+        content (`isi_teks`) and a section number (`nomor_bagian`). The response includes
+        parent kitab metadata (`kitab_id`, `judul`).
+      tags:
+        - Konten
+      parameters:
+        - $ref: "#/components/parameters/KitabId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated content sections with parent kitab metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KontenListResponse"
+              example:
+                data:
+                  kitab_id: 1
+                  judul: "منهاج القاصدين"
+                  sections:
+                    - id: 10
+                      nomor_bagian: 1
+                      isi_teks: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ"
+                    - id: 11
+                      nomor_bagian: 2
+                      isi_teks: "الحمد لله رب العالمين"
+                pagination:
+                  page: 1
+                  limit: 5
+                  total: 120
+                  total_pages: 24
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /search:
+    get:
+      operationId: searchKonten
+      summary: Full-text search on Arabic content
+      description: |
+        Search within the Arabic text content across all kitab using PostgreSQL GIN
+        full-text search. Uses `websearch_to_tsquery` with the `arabic` regconfig for
+        safe natural-language input handling.
+
+        Results are ranked by `ts_rank` relevance score and can be narrowed by **kategori**.
+      tags:
+        - Search
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: |
+            Arabic search query. Passed to PostgreSQL `websearch_to_tsquery('arabic', ...)`.
+            Supports natural Arabic text input — spaces and special characters are handled safely.
+          schema:
+            type: string
+            minLength: 1
+          example: "الصلاة"
+        - $ref: "#/components/parameters/KategoriFilter"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated search results ranked by relevance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchListResponse"
+              example:
+                data:
+                  - kitab_id: 1
+                    judul: "منهاج القاصدين"
+                    kategori: "فقه"
+                    section_id: 10
+                    nomor_bagian: 1
+                    isi_teks: "...الصلاة عماد الدين..."
+                    rank: 0.98
+                pagination:
+                  page: 1
+                  limit: 10
+                  total: 5
+                  total_pages: 1
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /kategori:
+    get:
+      operationId: listKategori
+      summary: List all categories
+      description: |
+        Get a distinct list of all available **kategori** (Arabic category names).
+        Values are sorted alphabetically. This endpoint is heavily cached (60 min TTL).
+      tags:
+        - Kategori
+      responses:
+        "200":
+          description: List of distinct kategori values
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KategoriResponse"
+              example:
+                data:
+                  - "أصول الفقه"
+                  - "تفسير"
+                  - "حديث"
+                  - "عقيدة"
+                  - "فقه"
+                total: 5
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  parameters:
+    KitabId:
+      name: id
+      in: path
+      required: true
+      description: Unique ID of the kitab
+      schema:
+        type: integer
+        minimum: 1
+      example: 1
+
+    KategoriFilter:
+      name: kategori
+      in: query
+      required: false
+      description: |
+        Filter by exact kategori (Arabic category name).
+        Arabic has no case, so comparison is byte-level equality.
+      schema:
+        type: string
+      example: "فقه"
+
+    JudulFilter:
+      name: judul
+      in: query
+      required: false
+      description: |
+        Partial match search on judul (Arabic title).
+        Uses PostgreSQL `ILIKE '%query%'` for substring matching.
+      schema:
+        type: string
+      example: "المنهاج"
+
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Page number for pagination
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      example: 1
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: Items per page (max 100)
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      example: 20
+
+  schemas:
+    DaftarKitab:
+      type: object
+      description: A kitab (book) in the library catalog
+      required:
+        - id
+        - judul
+        - kategori
+        - path_orig
+      properties:
+        id:
+          type: integer
+          description: Unique identifier
+          example: 1
+        judul:
+          type: string
+          description: Arabic title of the kitab
+          example: "منهاج القاصدين"
+        kategori:
+          type: string
+          description: Arabic category name
+          example: "فقه"
+        path_orig:
+          type: string
+          description: Internal file path (opaque — do not construct URLs from this)
+          example: "/files/minhajul-qashidin.pdf"
+
+    KontenKitab:
+      type: object
+      description: A content section within a kitab
+      required:
+        - id
+        - nomor_bagian
+        - isi_teks
+      properties:
+        id:
+          type: integer
+          description: Unique section identifier
+          example: 10
+        nomor_bagian:
+          type: integer
+          description: Section number (ordering)
+          example: 1
+        isi_teks:
+          type: string
+          description: Arabic text content of the section
+          example: "بِسْمِ اللَّهِ الرَّحْمَنِ الرَّحِيمِ"
+
+    KontenData:
+      type: object
+      description: Content sections with parent kitab metadata
+      required:
+        - kitab_id
+        - judul
+        - sections
+      properties:
+        kitab_id:
+          type: integer
+          description: ID of the parent kitab
+          example: 1
+        judul:
+          type: string
+          description: Arabic title of the parent kitab
+          example: "منهاج القاصدين"
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/KontenKitab"
+
+    SearchResult:
+      type: object
+      description: A full-text search result with relevance ranking
+      required:
+        - kitab_id
+        - judul
+        - kategori
+        - section_id
+        - nomor_bagian
+        - isi_teks
+        - rank
+      properties:
+        kitab_id:
+          type: integer
+          description: ID of the kitab containing the match
+          example: 1
+        judul:
+          type: string
+          description: Arabic title of the matching kitab
+          example: "منهاج القاصدين"
+        kategori:
+          type: string
+          description: Arabic category of the matching kitab
+          example: "فقه"
+        section_id:
+          type: integer
+          description: ID of the matching section
+          example: 10
+        nomor_bagian:
+          type: integer
+          description: Section number of the match
+          example: 1
+        isi_teks:
+          type: string
+          description: Arabic text content of the matching section
+          example: "...الصلاة عماد الدين..."
+        rank:
+          type: number
+          format: double
+          description: Relevance score from PostgreSQL `ts_rank` (higher = more relevant)
+          example: 0.98
+
+    Pagination:
+      type: object
+      description: Pagination metadata
+      required:
+        - page
+        - limit
+        - total
+        - total_pages
+      properties:
+        page:
+          type: integer
+          description: Current page number
+          example: 1
+        limit:
+          type: integer
+          description: Items per page
+          example: 20
+        total:
+          type: integer
+          description: Total number of items matching the query
+          example: 150
+        total_pages:
+          type: integer
+          description: Total number of pages
+          example: 8
+
+    ErrorResponse:
+      type: object
+      description: Standard error response body
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Machine-readable error code
+          enum:
+            - BAD_REQUEST
+            - NOT_FOUND
+            - INTERNAL_SERVER_ERROR
+          example: "NOT_FOUND"
+        message:
+          type: string
+          description: Human-readable error description
+          example: "Kitab with id 99 not found"
+
+    # --- Composite response schemas ---
+
+    KitabListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DaftarKitab"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    KitabSingleResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: "#/components/schemas/DaftarKitab"
+
+    KontenListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          $ref: "#/components/schemas/KontenData"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    SearchListResponse:
+      type: object
+      required:
+        - data
+        - pagination
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResult"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    KategoriResponse:
+      type: object
+      required:
+        - data
+        - total
+      properties:
+        data:
+          type: array
+          items:
+            type: string
+          description: Distinct list of Arabic kategori values
+        total:
+          type: integer
+          description: Number of distinct categories
+
+  responses:
+    BadRequest:
+      description: Invalid or missing query parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "BAD_REQUEST"
+            message: "Invalid query parameter: limit must be between 1 and 100"
+
+    NotFound:
+      description: Requested resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "NOT_FOUND"
+            message: "Kitab with id 99 not found"
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "INTERNAL_SERVER_ERROR"
+            message: "An unexpected error occurred"
