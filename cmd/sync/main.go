@@ -24,9 +24,25 @@ const mappingAndSettings = `
 {
   "settings": {
     "analysis": {
+      "char_filter": {
+        "remove_harakat": {
+          "type": "pattern_replace",
+          "pattern": "[\\u064B-\\u065F]",
+          "replacement": ""
+        }
+      },
       "filter": {
+        "arabic_stop": {
+          "type": "stop",
+          "stopwords": "_arabic_"
+        },
+        "arabic_stemmer": {
+          "type": "stemmer",
+          "language": "arabic"
+        },
         "arabic_synonym": {
           "type": "synonym",
+          "lenient": true,
           "synonyms": [
             "زكاة, زكاه",
             "ربا, فوائد"
@@ -36,9 +52,14 @@ const mappingAndSettings = `
       "analyzer": {
         "arabic_custom": {
           "tokenizer": "standard",
+          "char_filter": [
+            "remove_harakat"
+          ],
           "filter": [
             "lowercase",
+            "decimal_digit",
             "arabic_normalization",
+            "arabic_stop",
             "arabic_stemmer",
             "arabic_synonym"
           ]

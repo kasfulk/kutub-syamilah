@@ -8,6 +8,8 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/operator"
+	"github.com/elastic/go-elasticsearch/v8/typedapi/types/enums/textquerytype"
 	"github.com/kasjfulk/kutub-syamilah/internal/model"
 )
 
@@ -32,11 +34,15 @@ func NewElastic(pg *PostgresRepo, es *elasticsearch.TypedClient, indexName strin
 func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model.SearchResult, int, error) {
 	offset := (f.Page - 1) * f.Limit
 
-	// Base multi_match query
+	// Base multi_match query (optimized for Arabic)
 	query := types.Query{
 		MultiMatch: &types.MultiMatchQuery{
-			Query:  f.Query,
-			Fields: []string{"judul^3", "kategori^2", "isi_teks"},
+			Query:              f.Query,
+			Fields:             []string{"judul^4", "kategori^2", "isi_teks^1"},
+			Analyzer:           func(s string) *string { return &s }("arabic_custom"),
+			Type:               &textquerytype.Bestfields,
+			Operator:           &operator.And,
+			MinimumShouldMatch: func(s string) *string { return &s }("75%"),
 		},
 	}
 
@@ -45,8 +51,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 		query.MultiMatch.Fuzziness = "AUTO"
 	}
 
-	// Apply filter using function_score format if we need to apply weighting
-	// or bool query for strict filtering. We use a bool query.
+	// Apply filter
 	var finalQuery types.Query
 	if f.Kategori != "" {
 		finalQuery = types.Query{
@@ -65,7 +70,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 		finalQuery = query
 	}
 
-	// Setup Highlight
+	// Highlight
 	var highlight *types.Highlight
 	if f.Highlight {
 		highlight = &types.Highlight{
@@ -80,7 +85,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 		}
 	}
 
-	// Perform the search
+	// Execute search
 	res, err := r.es.Search().
 		Index(r.indexName).
 		Request(&search.Request{
@@ -96,16 +101,18 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 	}
 
 	total := int(res.Hits.Total.Value)
-	
-	// Map results
+
 	items := make([]model.SearchResult, 0, len(res.Hits.Hits))
 	for _, hit := range res.Hits.Hits {
 		var s model.SearchResult
+
 		if err := json.Unmarshal(hit.Source_, &s); err != nil {
 			return nil, 0, fmt.Errorf("json unmarshal _source: %w", err)
 		}
 
-		s.Rank = float64(*hit.Score_)
+		if hit.Score_ != nil {
+			s.Rank = float64(*hit.Score_)
+		}
 
 		if f.Highlight && len(hit.Highlight) > 0 {
 			if snippets, ok := hit.Highlight["isi_teks"]; ok && len(snippets) > 0 {
@@ -113,8 +120,8 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 			}
 		}
 
-		// Fallback for IsiTeks logic — same as Postgres LEFT(isi_teks, 50)
-		if len(s.IsiTeks) > 100 { // Assume safe truncation for Arabic 100 runes
+		// truncate isi_teks
+		if len(s.IsiTeks) > 100 {
 			runes := []rune(s.IsiTeks)
 			if len(runes) > 100 {
 				s.IsiTeks = string(runes[:100]) + "..."
