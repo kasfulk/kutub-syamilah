@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/pprof"
@@ -15,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-chi/chi/v5"
 	"github.com/redis/rueidis"
 
@@ -88,7 +90,23 @@ func run() error {
 	slog.Info("redis connected", "addr", redisAddr)
 
 	// --- Wire dependencies ---
-	repo := repository.NewPostgres(pool)
+	var repo repository.KitabRepository
+	pgRepo := repository.NewPostgres(pool)
+
+	if cfg.SearchBackend == "elastic" {
+		esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
+			Addresses: []string{cfg.ElasticURL},
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create elastic client: %w", err)
+		}
+		repo = repository.NewElastic(pgRepo, esClient, cfg.ElasticIndex)
+		slog.Info("search backend initialized", "backend", "elastic", "url", cfg.ElasticURL)
+	} else {
+		repo = pgRepo
+		slog.Info("search backend initialized", "backend", "postgres")
+	}
+
 	redisCache := cache.NewRedis(rdb, cfg.CacheTTL)
 	svc := service.NewKitab(repo, redisCache)
 	h := handler.New(svc)

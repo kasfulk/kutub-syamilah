@@ -141,6 +141,7 @@ func (r *PostgresRepo) GetKontenByKitabID(ctx context.Context, kitabID, page, li
 
 // SearchKonten performs Arabic full-text search using PostgreSQL GIN index.
 // Uses errgroup to fetch COUNT and data rows concurrently.
+// Uses dynamic query building to avoid Postgres sequential scans caused by parameterizing `IS NULL OR ...` clauses.
 func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model.SearchResult, int, error) {
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -149,12 +150,32 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 		total int
 	)
 
-	kategori := nullableString(f.Kategori)
 	offset := (f.Page - 1) * f.Limit
 
+	// Build dynamic SQL
+	searchSQL := searchKontenBaseSQL
+	countSQL := countSearchBaseSQL
+	var args []any
+	args = append(args, f.Query)
+
+	if f.Kategori != "" {
+		// PostgreSQL uses 1-based indexing for parameters
+		searchSQL += ` AND kk.kitab_id IN (SELECT id FROM daftar_kitab WHERE kategori = $2)`
+		countSQL += ` AND kk.kitab_id IN (SELECT id FROM daftar_kitab WHERE kategori = $2)`
+		args = append(args, f.Kategori)
+		
+		// For ordering and pagination
+		searchSQL += ` ORDER BY rank DESC LIMIT $3 OFFSET $4`
+		args = append(args, f.Limit, offset)
+	} else {
+		// For ordering and pagination
+		searchSQL += ` ORDER BY rank DESC LIMIT $2 OFFSET $3`
+		args = append(args, f.Limit, offset)
+	}
+
 	g.Go(func() error {
-		r.debugQuery(searchKontenSQL, f.Query, kategori, f.Limit, offset)
-		rows, err := r.pool.Query(ctx, searchKontenSQL, f.Query, kategori, f.Limit, offset)
+		r.debugQuery(searchSQL, args...)
+		rows, err := r.pool.Query(ctx, searchSQL, args...)
 		if err != nil {
 			return fmt.Errorf("query search: %w", err)
 		}
@@ -175,8 +196,14 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 	})
 
 	g.Go(func() error {
-		r.debugQuery(countSearchSQL, f.Query, kategori)
-		return r.pool.QueryRow(ctx, countSearchSQL, f.Query, kategori).Scan(&total)
+		var countArgs []any
+		countArgs = append(countArgs, f.Query)
+		if f.Kategori != "" {
+			countArgs = append(countArgs, f.Kategori)
+		}
+
+		r.debugQuery(countSQL, countArgs...)
+		return r.pool.QueryRow(ctx, countSQL, countArgs...).Scan(&total)
 	})
 
 	if err := g.Wait(); err != nil {
@@ -213,4 +240,80 @@ func nullableString(s string) *string {
 		return nil
 	}
 	return &s
+}
+
+// StreamKontenChunked streams all konten for a single kitab using keyset pagination.
+// fn is called for each row. If fn returns an error, streaming is aborted.
+func (r *PostgresRepo) StreamKontenChunked(ctx context.Context, kitabID, chunkSize int, fn func(model.SearchResult) error) error {
+	var lastID int = 0
+
+	for {
+		r.debugQuery(streamKontenChunkedSQL, kitabID, lastID, chunkSize)
+		rows, err := r.pool.Query(ctx, streamKontenChunkedSQL, kitabID, lastID, chunkSize)
+		if err != nil {
+			return fmt.Errorf("query stream chunk: %w", err)
+		}
+
+		count := 0
+		for rows.Next() {
+			var s model.SearchResult
+			s.KitabID = kitabID
+			if err := rows.Scan(
+				&s.SectionID, // Maps to kk.id
+				&s.KitabID,
+				&s.NomorBagian,
+				&s.IsiTeks,
+				&s.Judul,
+				&s.Kategori,
+			); err != nil {
+				rows.Close()
+				return fmt.Errorf("scan stream row: %w", err)
+			}
+
+			lastID = s.SectionID
+			count++
+
+			if err := fn(s); err != nil {
+				rows.Close()
+				return fmt.Errorf("process stream row: %w", err)
+			}
+		}
+
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("stream row iteration: %w", err)
+		}
+
+		// If we fetched fewer rows than chunkSize, we've reached the end
+		if count < chunkSize {
+			break
+		}
+	}
+
+	return nil
+}
+
+// ListKitabIDs returns all distinct kitab_id values from konten_kitab.
+func (r *PostgresRepo) ListKitabIDs(ctx context.Context) ([]int, error) {
+	r.debugQuery(listKitabIDsSQL)
+	rows, err := r.pool.Query(ctx, listKitabIDsSQL)
+	if err != nil {
+		return nil, fmt.Errorf("query list kitab ids: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan kitab id: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("list kitab ids iteration: %w", err)
+	}
+
+	return ids, nil
 }

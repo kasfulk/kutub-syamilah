@@ -33,11 +33,20 @@ type KitabRepository interface {
 	GetKontenByKitabID(ctx context.Context, kitabID int, page, limit int) ([]model.KontenKitab, int, error)
 
 	// SearchKonten performs Arabic full-text search across all konten,
-	// optionally filtered by kategori. Uses PostgreSQL GIN index.
+	// optionally filtered by kategori.
 	SearchKonten(ctx context.Context, filter SearchFilter) ([]model.SearchResult, int, error)
 
 	// ListKategori returns a distinct list of all kategori values.
 	ListKategori(ctx context.Context) ([]string, error)
+
+	// StreamKontenChunked streams all konten for a single kitab using keyset
+	// pagination. fn is called once per row; returning an error aborts streaming.
+	// Used exclusively by the cmd/sync ingestion pipeline.
+	StreamKontenChunked(ctx context.Context, kitabID, chunkSize int, fn func(model.SearchResult) error) error
+
+	// ListKitabIDs returns all distinct kitab_id values from konten_kitab,
+	// ordered ascending. Used by cmd/sync to distribute work across workers.
+	ListKitabIDs(ctx context.Context) ([]int, error)
 }
 
 // KitabFilter holds validated query parameters for listing kitab.
@@ -51,8 +60,10 @@ type KitabFilter struct {
 
 // SearchFilter holds validated parameters for Arabic FTS.
 type SearchFilter struct {
-	Query    string // Arabic search terms for websearch_to_tsquery
-	Kategori string // Optional Arabic kategori filter
-	Page     int
-	Limit    int
+	Query     string // Arabic search terms
+	Kategori  string // Optional Arabic kategori filter
+	Page      int
+	Limit     int
+	Fuzzy     bool // Enable fuzziness:"AUTO" in Elasticsearch
+	Highlight bool // Enable HTML highlight snippets in results
 }

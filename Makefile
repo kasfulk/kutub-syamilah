@@ -14,6 +14,10 @@ build:
 run:
 	$(GO) run ./cmd/api
 
+# Run synchronization from PostgreSQL to Elasticsearch
+sync:
+	$(GO) run ./cmd/sync
+
 # Run with live-reload (development mode)
 dev:
 	air

@@ -20,8 +20,10 @@ type KontenKitab struct {
 	IsiTeks     string `json:"isi_teks"` // Arabic text content
 }
 
-// SearchResult is assembled from a JOIN between daftar_kitab and konten_kitab.
-// Rank is the ts_rank score from PostgreSQL's full-text search.
+// SearchResult is assembled from Elasticsearch (primary) or a JOIN between
+// daftar_kitab and konten_kitab (PostgreSQL fallback).
+// Rank is the Elasticsearch _score or PostgreSQL ts_rank.
+// Highlight carries the HTML snippet with <mark> tags from Elasticsearch highlight.
 type SearchResult struct {
 	KitabID     int     `json:"kitab_id"`
 	Judul       string  `json:"judul"`
@@ -30,6 +32,7 @@ type SearchResult struct {
 	NomorBagian int     `json:"nomor_bagian"`
 	IsiTeks     string  `json:"isi_teks"`
 	Rank        float64 `json:"rank"`
+	Highlight   string  `json:"highlight,omitempty"` // HTML snippet with <mark> from Elasticsearch
 }
 
 // KontenResponse wraps konten sections with parent kitab metadata,

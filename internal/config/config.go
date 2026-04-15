@@ -16,6 +16,9 @@ type Config struct {
 	DatabaseURL     string
 	RedisURL        string
 	Addr            string
+	ElasticURL      string // KUTUB_ELASTIC_URL — Elasticsearch endpoint
+	ElasticIndex    string // KUTUB_ELASTIC_INDEX — target index name
+	SearchBackend   string // KUTUB_SEARCH_BACKEND — "elastic" or "postgres"
 	CacheTTL        time.Duration
 	ReadTimeout     time.Duration
 	WriteTimeout    time.Duration
@@ -23,6 +26,8 @@ type Config struct {
 	GOMEMLIMIT      int64 // bytes — set to 80% of container limit
 	MaxOpenConns    int
 	MaxIdleConns    int
+	SyncWorkers     int // KUTUB_SYNC_WORKERS — parallel workers for sync command
+	SyncChunkSize   int // KUTUB_SYNC_CHUNK_SIZE — rows per keyset-pagination chunk
 }
 
 // Option is a functional option for overriding Config defaults.
@@ -58,6 +63,16 @@ func WithMaxIdleConns(n int) Option {
 	return func(c *Config) { c.MaxIdleConns = n }
 }
 
+// WithElasticURL overrides the Elasticsearch URL.
+func WithElasticURL(url string) Option {
+	return func(c *Config) { c.ElasticURL = url }
+}
+
+// WithElasticIndex overrides the Elasticsearch index name.
+func WithElasticIndex(index string) Option {
+	return func(c *Config) { c.ElasticIndex = index }
+}
+
 // New returns a Config populated from environment variables with defaults.
 // Override specific values with functional options (useful in tests).
 // Returns an error if required environment variables are missing.
@@ -71,12 +86,17 @@ func New(opts ...Option) (*Config, error) {
 		Addr:            getEnv("KUTUB_ADDR", ":3000"),
 		DatabaseURL:     dbURL,
 		RedisURL:        getEnv("KUTUB_REDIS_URL", "redis://localhost:6379/0"),
+		ElasticURL:      getEnv("KUTUB_ELASTIC_URL", "http://localhost:9200"),
+		ElasticIndex:    getEnv("KUTUB_ELASTIC_INDEX", "konten_kitab"),
+		SearchBackend:   getEnv("KUTUB_SEARCH_BACKEND", "elastic"),
 		CacheTTL:        parseDuration(getEnv("KUTUB_CACHE_TTL", "5m")),
-		ReadTimeout:     parseDuration(getEnv("KUTUB_READ_TIMEOUT", "15s")),
-		WriteTimeout:    parseDuration(getEnv("KUTUB_WRITE_TIMEOUT", "15s")),
+		ReadTimeout:     parseDuration(getEnv("KUTUB_READ_TIMEOUT", "30s")),
+		WriteTimeout:    parseDuration(getEnv("KUTUB_WRITE_TIMEOUT", "30s")),
 		ShutdownTimeout: parseDuration(getEnv("KUTUB_SHUTDOWN_TIMEOUT", "30s")),
 		MaxOpenConns:    parseInt(getEnv("KUTUB_MAX_OPEN_CONNS", "25")),
 		MaxIdleConns:    parseInt(getEnv("KUTUB_MAX_IDLE_CONNS", "5")),
+		SyncWorkers:     parseInt(getEnv("KUTUB_SYNC_WORKERS", "6")),
+		SyncChunkSize:   parseInt(getEnv("KUTUB_SYNC_CHUNK_SIZE", "1000")),
 	}
 	for _, opt := range opts {
 		opt(cfg)

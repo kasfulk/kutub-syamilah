@@ -5,6 +5,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -50,7 +51,7 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	if err := json.NewEncoder(buf).Encode(v); err != nil {
 		// Log with LogAttrs — zero-alloc when level is disabled
 		// (golang-performance: slog.LogAttrs in hot paths).
-		slog.LogAttrs(nil, slog.LevelError, "json encode failed",
+		slog.LogAttrs(context.Background(), slog.LevelError, "json encode failed",
 			slog.String("error", err.Error()),
 		)
 		http.Error(w, `{"error":"INTERNAL_SERVER_ERROR","message":"failed to encode response"}`, http.StatusInternalServerError)

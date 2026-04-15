@@ -19,11 +19,15 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	kategori := q.Get("kategori")
+
 	filter := repository.SearchFilter{
-		Query:    query,
-		Kategori: q.Get("kategori"),
-		Page:     parseIntDefault(q.Get("page"), 1),
-		Limit:    clampInt(parseIntDefault(q.Get("limit"), 20), 1, 100),
+		Query:     query,
+		Kategori:  kategori,
+		Page:      parseIntDefault(q.Get("page"), 1),
+		Limit:     clampInt(parseIntDefault(q.Get("limit"), 20), 1, 100),
+		Fuzzy:     q.Get("fuzzy") == "true",
+		Highlight: q.Get("highlight") != "false", // default to true
 	}
 
 	items, total, err := h.svc.Search(r.Context(), filter)
