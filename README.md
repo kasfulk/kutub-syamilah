@@ -76,6 +76,7 @@ make sync
 | `GET` | `/v1/kitab` | List all available kitab with pagination/filters |
 | `GET` | `/v1/kitab/{id}` | Get metadata for a specific kitab |
 | `GET` | `/v1/kitab/{id}/konten` | Get paginated content for a kitab |
+| `GET` | `/v1/kitab/{id}/konten/{hal}` | Get specific page/section content |
 | `GET` | `/v1/search` | Full-text search across all library content |
 | `GET` | `/v1/kategori` | List all unique categories |
 | `GET` | `/docs` | Interactive Swagger UI documentation |

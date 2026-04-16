@@ -24,7 +24,19 @@ func (h *Handler) GetKonten(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := r.URL.Query()
-	page := parseIntDefault(q.Get("page"), 1)
+	
+	var page int
+	if halStr := chi.URLParam(r, "hal"); halStr != "" {
+		p, err := strconv.Atoi(halStr)
+		if err != nil || p < 1 {
+			writeError(w, http.StatusBadRequest, "BAD_REQUEST", fmt.Sprintf("invalid hal: %s", halStr))
+			return
+		}
+		page = p
+	} else {
+		page = parseIntDefault(q.Get("page"), 1)
+	}
+
 	limit := clampInt(parseIntDefault(q.Get("limit"), 20), 1, 100)
 
 	// Verify the kitab exists before fetching konten.

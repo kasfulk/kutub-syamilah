@@ -119,6 +119,7 @@ func run() error {
 		r.Get("/kitab", h.ListKitab)
 		r.Get("/kitab/{id}", h.GetKitab)
 		r.Get("/kitab/{id}/konten", h.GetKonten)
+		r.Get("/kitab/{id}/konten/{hal}", h.GetKonten)
 		r.Get("/search", h.Search)
 		r.Get("/kategori", h.ListKategori)
 	})

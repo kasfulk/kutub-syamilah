@@ -142,6 +142,38 @@ paths:
         "500":
           $ref: "#/components/responses/InternalServerError"
 
+  /kitab/{id}/konten/{hal}:
+    get:
+      operationId: getKontenByKitabIdAndHal
+      summary: Get specific content section (page) of a kitab
+      description: |
+        Directly retrieve a specific section (page) of a kitab by its section number (`hal`).
+        This is a convenience route mapping `{hal}` to the `page` parameter.
+      tags:
+        - Konten
+      parameters:
+        - $ref: "#/components/parameters/KitabId"
+        - name: hal
+          in: path
+          required: true
+          description: Section/page number to retrieve
+          schema:
+            type: integer
+            minimum: 1
+          example: 1
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Paginated content sections starting from the requested page
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KontenListResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
   /search:
     get:
       operationId: searchKonten
