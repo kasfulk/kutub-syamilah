@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,6 +29,7 @@ type Config struct {
 	MaxIdleConns    int
 	SyncWorkers     int // KUTUB_SYNC_WORKERS — parallel workers for sync command
 	SyncChunkSize   int // KUTUB_SYNC_CHUNK_SIZE — rows per keyset-pagination chunk
+	AllowedOrigins  []string // KUTUB_ALLOWED_ORIGINS — comma-separated list
 }
 
 // Option is a functional option for overriding Config defaults.
@@ -97,6 +99,7 @@ func New(opts ...Option) (*Config, error) {
 		MaxIdleConns:    parseInt(getEnv("KUTUB_MAX_IDLE_CONNS", "5")),
 		SyncWorkers:     parseInt(getEnv("KUTUB_SYNC_WORKERS", "6")),
 		SyncChunkSize:   parseInt(getEnv("KUTUB_SYNC_CHUNK_SIZE", "1000")),
+		AllowedOrigins:  parseCSV(getEnv("KUTUB_ALLOWED_ORIGINS", "http://localhost:3000")),
 	}
 	for _, opt := range opts {
 		opt(cfg)
@@ -146,4 +149,16 @@ func parseInt(s string) int {
 		return 0
 	}
 	return n
+}
+
+// parseCSV parses a comma-separated string into a slice, trimming whitespace.
+func parseCSV(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
 }

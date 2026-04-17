@@ -18,6 +18,7 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/redis/rueidis"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -113,6 +114,17 @@ func run() error {
 
 	// --- Router ---
 	r := chi.NewRouter()
+
+	// CORS middleware — configured from environment.
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   cfg.AllowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300, // Maximum value not ignored by any of major browsers
+	}))
+
 	r.Use(middleware.Logger, middleware.Recover)
 
 	r.Route("/v1", func(r chi.Router) {
