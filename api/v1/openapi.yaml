@@ -63,6 +63,8 @@ paths:
                     judul: "منهاج القاصدين"
                     kategori: "فقه"
                     path_orig: "/files/minhajul-qashidin.pdf"
+                    penulis: "ابن قدامة"
+                    publisher: "دار السلام"
                 pagination:
                   page: 1
                   limit: 10
@@ -95,6 +97,8 @@ paths:
                   judul: "منهاج القاصدين"
                   kategori: "فقه"
                   path_orig: "/files/minhajul-qashidin.pdf"
+                  penulis: "ابن قدامة"
+                  publisher: "دار السلام"
         "404":
           $ref: "#/components/responses/NotFound"
         "500":
@@ -125,6 +129,8 @@ paths:
                 data:
                   kitab_id: 1
                   judul: "منهاج القاصدين"
+                  penulis: "ابن قدامة"
+                  publisher: "دار السلام"
                   sections:
                     - id: 10
                       nomor_bagian: 1
@@ -212,6 +218,8 @@ paths:
                   - kitab_id: 1
                     judul: "منهاج القاصدين"
                     kategori: "فقه"
+                    penulis: "ابن قدامة"
+                    publisher: "دار السلام"
                     section_id: 10
                     nomor_bagian: 1
                     isi_teks: "...الصلاة عماد الدين..."
@@ -336,6 +344,14 @@ components:
           type: string
           description: Internal file path (opaque — do not construct URLs from this)
           example: "/files/minhajul-qashidin.pdf"
+        penulis:
+          type: string
+          description: Arabic author name
+          example: "ابن قدامة"
+        publisher:
+          type: string
+          description: Arabic publisher name
+          example: "دار السلام"
 
     KontenKitab:
       type: object
@@ -374,6 +390,14 @@ components:
           type: string
           description: Arabic title of the parent kitab
           example: "منهاج القاصدين"
+        penulis:
+          type: string
+          description: Arabic author name
+          example: "ابن قدامة"
+        publisher:
+          type: string
+          description: Arabic publisher name
+          example: "دار السلام"
         sections:
           type: array
           items:
@@ -403,6 +427,14 @@ components:
           type: string
           description: Arabic category of the matching kitab
           example: "فقه"
+        penulis:
+          type: string
+          description: Arabic author name
+          example: "ابن قدامة"
+        publisher:
+          type: string
+          description: Arabic publisher name
+          example: "دار السلام"
         section_id:
           type: integer
           description: ID of the matching section

@@ -77,6 +77,14 @@ const mappingAndSettings = `
         "type": "text",
         "analyzer": "arabic_custom"
       },
+      "penulis": {
+        "type": "text",
+        "analyzer": "arabic_custom"
+      },
+      "publisher": {
+        "type": "text",
+        "analyzer": "arabic_custom"
+      },
       "isi_teks": {
         "type": "text",
         "analyzer": "arabic_custom"
@@ -217,6 +225,8 @@ func run() error {
 					"nomor_bagian": s.NomorBagian,
 					"kategori":     s.Kategori,
 					"judul":        s.Judul,
+					"penulis":      s.Penulis,
+					"publisher":    s.Publisher,
 					"isi_teks":     s.IsiTeks,
 				}
 

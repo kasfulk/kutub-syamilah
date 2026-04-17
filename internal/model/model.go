@@ -6,10 +6,12 @@ package model
 // DaftarKitab mirrors the daftar_kitab table.
 // judul and kategori are Arabic sentences stored as UTF-8 text.
 type DaftarKitab struct {
-	ID       int    `json:"id"`
-	Judul    string `json:"judul"`     // Arabic title sentence
-	Kategori string `json:"kategori"`  // Arabic category name
-	PathOrig string `json:"path_orig"` // Internal file path (opaque to clients)
+	ID        int    `json:"id"`
+	Judul     string `json:"judul"`      // Arabic title sentence
+	Kategori  string `json:"kategori"`   // Arabic category name
+	PathOrig  string `json:"path_orig"`  // Internal file path (opaque to clients)
+	Penulis   string `json:"penulis"`    // Arabic author name
+	Publisher string `json:"publisher"`  // Arabic publisher name
 }
 
 // KontenKitab mirrors the konten_kitab table.
@@ -28,19 +30,23 @@ type SearchResult struct {
 	KitabID     int     `json:"kitab_id"`
 	Judul       string  `json:"judul"`
 	Kategori    string  `json:"kategori"`
+	Penulis     string  `json:"penulis"`
+	Publisher   string  `json:"publisher"`
 	SectionID   int     `json:"section_id"`
 	NomorBagian int     `json:"nomor_bagian"`
 	IsiTeks     string  `json:"isi_teks"`
 	Rank        float64 `json:"rank"`
-	Highlight   string  `json:"highlight,omitempty"` // HTML snippet with <mark> from Elasticsearch
+	Highlight   string  `json:"highlight,omitempty"` // HTML snippet with <mark> tags from Elasticsearch
 }
 
 // KontenResponse wraps konten sections with parent kitab metadata,
 // matching the API contract for GET /kitab/:id/konten.
 type KontenResponse struct {
-	KitabID  int            `json:"kitab_id"`
-	Judul    string         `json:"judul"`
-	Sections []KontenKitab  `json:"sections"`
+	KitabID   int           `json:"kitab_id"`
+	Judul     string        `json:"judul"`
+	Penulis   string        `json:"penulis"`
+	Publisher string        `json:"publisher"`
+	Sections  []KontenKitab `json:"sections"`
 }
 
 // PaginatedResponse is a generic response wrapper for paginated endpoints.

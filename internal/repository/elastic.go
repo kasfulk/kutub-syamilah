@@ -38,7 +38,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 	query := types.Query{
 		MultiMatch: &types.MultiMatchQuery{
 			Query:              f.Query,
-			Fields:             []string{"isi_teks^4", "judul^2", "kategori^1"},
+			Fields:             []string{"isi_teks^4", "judul^2", "penulis^1.5", "kategori^1", "publisher^1"},
 			Analyzer:           func(s string) *string { return &s }("arabic_custom"),
 			Type:               &textquerytype.Bestfields,
 			Operator:           &operator.Or,

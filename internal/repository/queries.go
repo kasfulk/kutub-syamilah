@@ -8,7 +8,7 @@ const (
 	// Arabic kategori (exact byte match, = is sufficient since Arabic has no case).
 	// NULL parameter means "no filter" — elegant parameterized optional filtering.
 	listKitabSQL = `
-		SELECT id, judul, kategori, path_orig
+		SELECT id, judul, kategori, path_orig, penulis, publisher
 		FROM daftar_kitab
 		WHERE
 			($1::text IS NULL OR judul ILIKE '%' || $1 || '%')
@@ -24,7 +24,7 @@ const (
 			AND ($2::text IS NULL OR kategori = $2)`
 
 	getKitabByIDSQL = `
-		SELECT id, judul, kategori, path_orig
+		SELECT id, judul, kategori, path_orig, penulis, publisher
 		FROM daftar_kitab
 		WHERE id = $1`
 
@@ -43,12 +43,15 @@ const (
 	// Kept as fallback — primary search is now handled by ElasticRepo.
 	searchKontenBaseSQL = `
 		SELECT
-			(SELECT id FROM daftar_kitab dk WHERE dk.id = kk.kitab_id) AS id,
-			(SELECT judul FROM daftar_kitab dk WHERE dk.id = kk.kitab_id) AS judul,
-			(SELECT kategori FROM daftar_kitab dk WHERE dk.id = kk.kitab_id) AS kategori,
+			dk.id,
+			dk.judul,
+			dk.kategori,
+			dk.penulis,
+			dk.publisher,
 			kk.id, kk.nomor_bagian, LEFT(kk.isi_teks, 50) AS isi_teks,
 			ts_rank(kk.search_vector, websearch_to_tsquery('arabic'::regconfig, $1)) AS rank
 		FROM konten_kitab kk
+		JOIN daftar_kitab dk ON dk.id = kk.kitab_id
 		WHERE
 			kk.search_vector @@ websearch_to_tsquery('arabic'::regconfig, $1)`
 
@@ -78,7 +81,9 @@ const (
 			kk.nomor_bagian,
 			kk.isi_teks,
 			dk.judul,
-			dk.kategori
+			dk.kategori,
+			dk.penulis,
+			dk.publisher
 		FROM konten_kitab kk
 		JOIN daftar_kitab dk ON dk.id = kk.kitab_id
 		WHERE kk.kitab_id = $1

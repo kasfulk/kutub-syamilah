@@ -58,9 +58,11 @@ func (h *Handler) GetKonten(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, model.PaginatedResponse[model.KontenResponse]{
 		Data: model.KontenResponse{
-			KitabID:  kitab.ID,
-			Judul:    kitab.Judul,
-			Sections: items,
+			KitabID:   kitab.ID,
+			Judul:     kitab.Judul,
+			Penulis:   kitab.Penulis,
+			Publisher: kitab.Publisher,
+			Sections:  items,
 		},
 		Pagination: model.Pagination{
 			Page:       page,

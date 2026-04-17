@@ -63,7 +63,7 @@ func (r *PostgresRepo) ListKitab(ctx context.Context, f KitabFilter) ([]model.Da
 		items = make([]model.DaftarKitab, 0, f.Limit)
 		for rows.Next() {
 			var k model.DaftarKitab
-			if err := rows.Scan(&k.ID, &k.Judul, &k.Kategori, &k.PathOrig); err != nil {
+			if err := rows.Scan(&k.ID, &k.Judul, &k.Kategori, &k.PathOrig, &k.Penulis, &k.Publisher); err != nil {
 				return fmt.Errorf("scan kitab: %w", err)
 			}
 			items = append(items, k)
@@ -88,7 +88,7 @@ func (r *PostgresRepo) GetKitabByID(ctx context.Context, id int) (*model.DaftarK
 	var k model.DaftarKitab
 	r.debugQuery(getKitabByIDSQL, id)
 	err := r.pool.QueryRow(ctx, getKitabByIDSQL, id).
-		Scan(&k.ID, &k.Judul, &k.Kategori, &k.PathOrig)
+		Scan(&k.ID, &k.Judul, &k.Kategori, &k.PathOrig, &k.Penulis, &k.Publisher)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -185,6 +185,7 @@ func (r *PostgresRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]mode
 			var s model.SearchResult
 			if err := rows.Scan(
 				&s.KitabID, &s.Judul, &s.Kategori,
+				&s.Penulis, &s.Publisher,
 				&s.SectionID, &s.NomorBagian, &s.IsiTeks,
 				&s.Rank,
 			); err != nil {
@@ -265,6 +266,8 @@ func (r *PostgresRepo) StreamKontenChunked(ctx context.Context, kitabID, chunkSi
 				&s.IsiTeks,
 				&s.Judul,
 				&s.Kategori,
+				&s.Penulis,
+				&s.Publisher,
 			); err != nil {
 				rows.Close()
 				return fmt.Errorf("scan stream row: %w", err)
