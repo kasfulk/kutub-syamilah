@@ -34,21 +34,37 @@ func NewElastic(pg *PostgresRepo, es *elasticsearch.TypedClient, indexName strin
 func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model.SearchResult, int, error) {
 	offset := (f.Page - 1) * f.Limit
 
-	// Base multi_match query (optimized for Arabic)
-	query := types.Query{
-		MultiMatch: &types.MultiMatchQuery{
-			Query:              f.Query,
-			Fields:             []string{"isi_teks^4", "judul^2", "penulis^1.5", "kategori^1", "publisher^1"},
-			Analyzer:           func(s string) *string { return &s }("arabic_custom"),
-			Type:               &textquerytype.Bestfields,
-			Operator:           &operator.Or,
-			MinimumShouldMatch: func(s string) *string { return &s }("75%"),
-		},
+	// Priority 1: Match on content (isi_teks) with high weight
+	mq := types.MatchQuery{
+		Query:              f.Query,
+		Boost:              func(f float32) *float32 { return &f }(10.0), // Main content match
+		Analyzer:           func(s string) *string { return &s }("arabic_custom"),
+		MinimumShouldMatch: func(s string) *string { return &s }("75%"),
+	}
+
+	// Priority 2: Multi-match on metadata (judul, penulis, etc.) as "similarity"
+	mmq := types.MultiMatchQuery{
+		Query:              f.Query,
+		Fields:             []string{"judul^4", "penulis^2", "kategori^1.5", "publisher^1"},
+		Analyzer:           func(s string) *string { return &s }("arabic_custom"),
+		Type:               &textquerytype.Bestfields,
+		Operator:           &operator.Or,
+		MinimumShouldMatch: func(s string) *string { return &s }("75%"),
 	}
 
 	// Apply fuzziness if requested
 	if f.Fuzzy {
-		query.MultiMatch.Fuzziness = "AUTO"
+		mq.Fuzziness = func(s string) *string { return &s }("AUTO")
+		mmq.Fuzziness = "AUTO"
+	}
+
+	query := types.Query{
+		Bool: &types.BoolQuery{
+			Should: []types.Query{
+				{Match: map[string]types.MatchQuery{"isi_teks": mq}},
+				{MultiMatch: &mmq},
+			},
+		},
 	}
 
 	// Apply filter
