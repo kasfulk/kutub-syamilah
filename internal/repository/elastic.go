@@ -34,7 +34,14 @@ func NewElastic(pg *PostgresRepo, es *elasticsearch.TypedClient, indexName strin
 func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model.SearchResult, int, error) {
 	offset := (f.Page - 1) * f.Limit
 
-	// Priority 1: Match on content (isi_teks) with high weight
+	// Priority 0: Exact phrase match (isi_teks) - Tier 1
+	mpq := types.MatchPhraseQuery{
+		Query:    f.Query,
+		Boost:    func(f float32) *float32 { return &f }(100.0),
+		Analyzer: func(s string) *string { return &s }("arabic_custom"),
+	}
+
+	// Priority 1: Match on content (isi_teks) with high weight - Tier 2
 	mq := types.MatchQuery{
 		Query:              f.Query,
 		Boost:              func(f float32) *float32 { return &f }(10.0), // Main content match
@@ -42,7 +49,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 		MinimumShouldMatch: func(s string) *string { return &s }("75%"),
 	}
 
-	// Priority 2: Multi-match on metadata (judul, penulis, etc.) as "similarity"
+	// Priority 2: Multi-match on metadata (judul, penulis, etc.) as "similarity" - Tier 3
 	mmq := types.MultiMatchQuery{
 		Query:              f.Query,
 		Fields:             []string{"judul^4", "penulis^2", "kategori^1.5", "publisher^1"},
@@ -61,8 +68,9 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 	query := types.Query{
 		Bool: &types.BoolQuery{
 			Should: []types.Query{
-				{Match: map[string]types.MatchQuery{"isi_teks": mq}},
-				{MultiMatch: &mmq},
+				{MatchPhrase: map[string]types.MatchPhraseQuery{"isi_teks": mpq}},
+				{Match:       map[string]types.MatchQuery{"isi_teks": mq}},
+				{MultiMatch:  &mmq},
 			},
 		},
 	}
