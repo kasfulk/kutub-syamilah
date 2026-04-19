@@ -69,8 +69,8 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 		Bool: &types.BoolQuery{
 			Should: []types.Query{
 				{MatchPhrase: map[string]types.MatchPhraseQuery{"isi_teks": mpq}},
-				{Match:       map[string]types.MatchQuery{"isi_teks": mq}},
-				{MultiMatch:  &mmq},
+				{Match: map[string]types.MatchQuery{"isi_teks": mq}},
+				{MultiMatch: &mmq},
 			},
 		},
 	}
@@ -102,7 +102,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 			PostTags: []string{"</mark>"},
 			Fields: map[string]types.HighlightField{
 				"isi_teks": {
-					FragmentSize:      func(i int) *int { return &i }(150),
+					FragmentSize:      func(i int) *int { return &i }(350),
 					NumberOfFragments: func(i int) *int { return &i }(1),
 				},
 			},
