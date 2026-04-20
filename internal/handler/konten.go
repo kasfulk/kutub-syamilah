@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"log/slog"
+
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kasjfulk/kutub-syamilah/internal/model"
@@ -54,6 +56,24 @@ func (h *Handler) GetKonten(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "INTERNAL_SERVER_ERROR", err.Error())
 		return
+	}
+
+	// Dynamic Translation support if 'lang' query parameter is provided.
+	// Currently filters on 'id' (Indonesian) and 'en' (English).
+	lang := q.Get("lang")
+	if lang == "id" || lang == "en" {
+		for i := range items {
+			translated, err := translateText(r.Context(), items[i].IsiTeks, lang)
+			if err != nil {
+				slog.LogAttrs(r.Context(), slog.LevelError, "translation failed",
+					slog.String("error", err.Error()),
+					slog.Int("section_id", items[i].ID),
+					slog.String("lang", lang),
+				)
+				continue
+			}
+			items[i].IsiTeks = translated
+		}
 	}
 
 	writeJSON(w, http.StatusOK, model.PaginatedResponse[model.KontenResponse]{
