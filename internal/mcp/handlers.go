@@ -193,6 +193,46 @@ func (s *Server) HandleListKategori(ctx context.Context, _ mcpLib.CallToolReques
 	})
 }
 
+// HandleSearchElastic handles the search_elastic tool - direct Elasticsearch query without cache.
+func (s *Server) HandleSearchElastic(ctx context.Context, req mcpLib.CallToolRequest) (*mcpLib.CallToolResult, error) {
+	query, err := req.RequireString("query")
+	if err != nil {
+		return mcpLib.NewToolResultError(err.Error()), nil
+	}
+
+	filter := repository.SearchFilter{
+		Query:     query,
+		Kategori:  req.GetString("kategori", ""),
+		Page:      int(req.GetFloat("page", 1)),
+		Limit:     int(req.GetFloat("limit", 20)),
+		Fuzzy:     req.GetFloat("fuzzy", 0) != 0,
+		Highlight: req.GetFloat("highlight", 1) != 0,
+	}
+	if filter.Page < 1 {
+		filter.Page = 1
+	}
+	if filter.Limit < 1 || filter.Limit > 100 {
+		filter.Limit = 20
+	}
+
+	// Direct repository call - bypasses cache for real-time results
+	results, total, err := s.svc.SearchDirect(ctx, filter)
+	if err != nil {
+		return mcpLib.NewToolResultErrorFromErr("search_elastic", err), nil
+	}
+
+	resp := model.PaginatedResponse[[]model.SearchResult]{
+		Data: results,
+		Pagination: model.Pagination{
+			Page:       filter.Page,
+			Limit:      filter.Limit,
+			Total:      total,
+			TotalPages: (total + filter.Limit - 1) / filter.Limit,
+		},
+	}
+	return jsonResult(resp)
+}
+
 // --- Helpers ---
 
 // jsonResult serializes v to JSON and wraps it in an MCP text result.

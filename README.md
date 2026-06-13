@@ -11,6 +11,7 @@ The system is built with a modern, high-performance stack:
 - **Search Engine**: Elasticsearch v8 (Powering advanced Arabic full-text search with normalization and stemming)
 - **Cache**: Redis via `rueidis` (Cache-aside pattern to reduce DB load)
 - **Router**: `chi` v5 (Lightweight and fast)
+- **MCP Server**: Model Context Protocol server for AI agent integration
 
 ## ✨ Features
 
@@ -20,6 +21,7 @@ The system is built with a modern, high-performance stack:
 - **Graceful Shutdown**: Sanely handles SIGINT/SIGTERM.
 - **Built-in Interactive Docs**: Swagger UI documentation included.
 - **Efficient Migration**: Bulk indexing script for syncing PostgreSQL to Elasticsearch.
+- **MCP Tools**: 6 tools for AI agents including direct Elasticsearch search.
 
 ## 🛠 Setup
 
@@ -68,6 +70,38 @@ Ensure PostgreSQL is populated with data, then run the sync command to build the
 ```bash
 make sync
 ```
+
+## 🤖 MCP Server
+
+The MCP (Model Context Protocol) server enables AI agents to search the Kutub Syamilah library directly.
+
+### Start MCP Server
+```bash
+# Using stdio transport (for Claude Desktop)
+make run-mcp
+
+# Using HTTP transport
+go run ./cmd/mcp --transport http
+```
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_kitab` | Browse kitab catalog with pagination and filters |
+| `get_kitab` | Get metadata for a single kitab by ID |
+| `get_konten` | Read paginated content sections (with optional translation) |
+| `search_kitab` | Full-text search with cache (2 min TTL) |
+| `search_elastic` | **Direct Elasticsearch search** - real-time, no cache |
+| `list_kategori` | List all available Arabic categories |
+
+### Configuration
+
+MCP server inherits environment variables from the main API. Additional variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `KUTUB_MCP_ADDR` | HTTP server address (http transport) | `:3001` |
 
 ## 🔍 API Endpoints
 

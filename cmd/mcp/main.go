@@ -117,8 +117,9 @@ func run() error {
 	mcpServer.AddTool(mcp.GetKontenTool, mcpHandler.HandleGetKonten)
 	mcpServer.AddTool(mcp.SearchKitabTool, mcpHandler.HandleSearchKitab)
 	mcpServer.AddTool(mcp.ListKategoriTool, mcpHandler.HandleListKategori)
+	mcpServer.AddTool(mcp.SearchElasticTool, mcpHandler.HandleSearchElastic)
 
-	slog.Info("MCP server initialized", "tools", 5)
+	slog.Info("MCP server initialized", "tools", 6)
 
 	// --- Start Server based on transport ---
 	switch *transport {

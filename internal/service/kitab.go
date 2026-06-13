@@ -211,6 +211,12 @@ type paginatedCacheEntry[T any] struct {
 	Total int `json:"total"`
 }
 
+// SearchDirect performs direct Elasticsearch search without cache.
+// Used by MCP server for real-time search results.
+func (s *KitabService) SearchDirect(ctx context.Context, f repository.SearchFilter) ([]model.SearchResult, int, error) {
+	return s.repo.SearchKonten(ctx, f)
+}
+
 // Service defines the contract for the handler layer.
 // Defined here (consumer side) so handlers depend on the abstraction.
 type Service interface {
@@ -218,6 +224,7 @@ type Service interface {
 	GetKitab(ctx context.Context, id int) (*model.DaftarKitab, error)
 	GetKonten(ctx context.Context, kitabID, page, limit int) ([]model.KontenKitab, int, error)
 	Search(ctx context.Context, filter repository.SearchFilter) ([]model.SearchResult, int, error)
+	SearchDirect(ctx context.Context, filter repository.SearchFilter) ([]model.SearchResult, int, error)
 	ListKategori(ctx context.Context) ([]string, error)
 }
 
