@@ -61,6 +61,18 @@ deps:
 build-linux:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/api
 
+# Build MCP server
+build-mcp:
+	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-mcp ./cmd/mcp
+
+# Run MCP server with stdio transport (Claude Desktop)
+run-mcp:
+	$(GO) run ./cmd/mcp --transport stdio
+
+# Run MCP server with HTTP transport
+run-mcp-http:
+	$(GO) run ./cmd/mcp --transport http
+
 # Help
 help:
 	@echo "Available targets:"
@@ -76,3 +88,6 @@ help:
 	@echo "  clean         - Clean build artifacts"
 	@echo "  deps          - Download and tidy dependencies"
 	@echo "  build-linux   - Cross-compile for Linux"
+	@echo "  build-mcp     - Build MCP server"
+	@echo "  run-mcp       - Run MCP server (stdio)"
+	@echo "  run-mcp-http  - Run MCP server (HTTP)"
