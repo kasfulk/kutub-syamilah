@@ -59,11 +59,11 @@ deps:
 
 # Build for Linux (production)
 build-linux:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/api
+	CGO_ENABLED=0 GOGC=off GOOS=linux GOARCH=amd64 $(GO) build -a -installsuffix cgo -o $(BUILD_DIR)/$(BINARY_NAME)-linux-amd64 ./cmd/api
 
 # Build MCP server
 build-mcp:
-	$(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-mcp ./cmd/mcp
+	CGO_ENABLED=0 GOGC=off GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-mcp ./cmd/mcp
 
 # Run MCP server with stdio transport (Claude Desktop)
 run-mcp:
