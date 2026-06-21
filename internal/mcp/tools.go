@@ -4,68 +4,18 @@ import (
 	mcpLib "github.com/mark3labs/mcp-go/mcp"
 )
 
-// ListKitabTool defines the tool for browsing the kitab catalog with pagination and filters.
-var ListKitabTool = mcpLib.NewTool("list_kitab",
-	mcpLib.WithDescription("Browse the Arabic Islamic manuscript (kitab) catalog with optional filters. Returns paginated results with book metadata (id, judul/title, kategori/category, penulis/author, publisher). All text is in Arabic."),
-	mcpLib.WithString("kategori",
-		mcpLib.Description("Filter by exact Arabic category name (e.g., 'فقه', 'تفسير', 'حديث')"),
-	),
-	mcpLib.WithString("judul",
-		mcpLib.Description("Filter by Arabic title (partial match)"),
-	),
-	mcpLib.WithNumber("page",
-		mcpLib.Description("Page number (1-based)"),
-		mcpLib.DefaultNumber(1),
-		mcpLib.Min(1),
-	),
-	mcpLib.WithNumber("limit",
-		mcpLib.Description("Number of results per page"),
-		mcpLib.DefaultNumber(20),
-		mcpLib.Min(1),
-		mcpLib.Max(100),
-	),
-)
-
-// GetKitabTool defines the tool for retrieving a single kitab by ID.
-var GetKitabTool = mcpLib.NewTool("get_kitab",
-	mcpLib.WithDescription("Get metadata for a single Arabic manuscript (kitab) by its ID. Returns title, category, author, publisher."),
-	mcpLib.WithNumber("id",
-		mcpLib.Required(),
-		mcpLib.Description("The kitab ID"),
-		mcpLib.Min(1),
-	),
-)
-
-// GetKontenTool defines the tool for reading the content sections of a kitab.
-var GetKontenTool = mcpLib.NewTool("get_konten",
-	mcpLib.WithDescription("Read paginated content sections (Arabic text) of a manuscript. Supports optional translation to Indonesian (id) or English (en)."),
-	mcpLib.WithNumber("kitab_id",
-		mcpLib.Required(),
-		mcpLib.Description("The kitab ID to read content from"),
-		mcpLib.Min(1),
-	),
-	mcpLib.WithNumber("page",
-		mcpLib.Description("Page number (1-based)"),
-		mcpLib.DefaultNumber(1),
-		mcpLib.Min(1),
-	),
-	mcpLib.WithNumber("limit",
-		mcpLib.Description("Number of sections per page"),
-		mcpLib.DefaultNumber(20),
-		mcpLib.Min(1),
-		mcpLib.Max(100),
-	),
-	mcpLib.WithString("lang",
-		mcpLib.Description("Translate content: 'id' for Indonesian, 'en' for English. Omit for original Arabic text."),
-	),
-)
-
-// SearchKitabTool defines the tool for Arabic full-text search across all manuscripts.
+// SearchKitabTool defines the only MCP tool: Arabic full-text search across all manuscripts.
 var SearchKitabTool = mcpLib.NewTool("search_kitab",
-	mcpLib.WithDescription("Full-text search across all Arabic manuscript content. Supports Arabic stemming, normalization, and optional fuzzy matching. Returns ranked results with optional highlight snippets."),
+	mcpLib.WithDescription("Full-text search across all Arabic manuscript content using Elasticsearch. "+
+		"The 'query' parameter MUST be in Arabic script (core block U+0600–U+06FF; "+
+		"Presentation Forms and other Arabic blocks are accepted and NFKC-normalized to core). "+
+		"Before calling this tool, translate any non-Arabic user request into Arabic search terms first; "+
+		"do not call with Latin/transliterated keywords. "+
+		"Returns up to 5 strongly ranked results with full text content and highlight snippets. "+
+		"Supports Arabic stemming, normalization, and optional fuzzy matching."),
 	mcpLib.WithString("query",
 		mcpLib.Required(),
-		mcpLib.Description("Arabic search terms"),
+		mcpLib.Description("Arabic search terms (required, Arabic script only)"),
 	),
 	mcpLib.WithString("kategori",
 		mcpLib.Description("Filter results by exact Arabic category name"),
@@ -77,43 +27,7 @@ var SearchKitabTool = mcpLib.NewTool("search_kitab",
 	),
 	mcpLib.WithNumber("limit",
 		mcpLib.Description("Number of results per page"),
-		mcpLib.DefaultNumber(20),
-		mcpLib.Min(1),
-		mcpLib.Max(100),
-	),
-	mcpLib.WithBoolean("fuzzy",
-		mcpLib.Description("Enable fuzzy matching for typos and variations"),
-		mcpLib.DefaultBool(false),
-	),
-	mcpLib.WithBoolean("highlight",
-		mcpLib.Description("Include highlighted snippets in results"),
-		mcpLib.DefaultBool(true),
-	),
-)
-
-// ListKategoriTool defines the tool for listing all available Arabic categories.
-var ListKategoriTool = mcpLib.NewTool("list_kategori",
-	mcpLib.WithDescription("List all distinct Arabic category names available in the manuscript collection (e.g., فقه, تفسير, حديث)."),
-)
-
-// SearchElasticTool defines the tool for direct Elasticsearch search bypassing cache.
-var SearchElasticTool = mcpLib.NewTool("search_elastic",
-	mcpLib.WithDescription("Direct Elasticsearch search across all manuscript content. Bypasses cache for real-time results. Returns ranked results with highlight snippets."),
-	mcpLib.WithString("query",
-		mcpLib.Required(),
-		mcpLib.Description("Arabic search terms"),
-	),
-	mcpLib.WithString("kategori",
-		mcpLib.Description("Filter results by exact Arabic category name"),
-	),
-	mcpLib.WithNumber("page",
-		mcpLib.Description("Page number (1-based)"),
-		mcpLib.DefaultNumber(1),
-		mcpLib.Min(1),
-	),
-	mcpLib.WithNumber("limit",
-		mcpLib.Description("Number of results per page"),
-		mcpLib.DefaultNumber(20),
+		mcpLib.DefaultNumber(5),
 		mcpLib.Min(1),
 		mcpLib.Max(100),
 	),

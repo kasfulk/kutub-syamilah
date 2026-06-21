@@ -144,14 +144,7 @@ func (r *ElasticRepo) SearchKonten(ctx context.Context, f SearchFilter) ([]model
 			}
 		}
 
-		// truncate isi_teks
-		if len(s.IsiTeks) > 100 {
-			runes := []rune(s.IsiTeks)
-			if len(runes) > 100 {
-				s.IsiTeks = string(runes[:100]) + "..."
-			}
-		}
-
+		// Full content returned — no truncation, so callers see the complete isi_teks.
 		items = append(items, s)
 	}
 

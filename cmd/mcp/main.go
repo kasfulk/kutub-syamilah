@@ -112,14 +112,9 @@ func run() error {
 
 	// --- Register Tools ---
 	mcpHandler := mcp.NewServer(svc)
-	mcpServer.AddTool(mcp.ListKitabTool, mcpHandler.HandleListKitab)
-	mcpServer.AddTool(mcp.GetKitabTool, mcpHandler.HandleGetKitab)
-	mcpServer.AddTool(mcp.GetKontenTool, mcpHandler.HandleGetKonten)
 	mcpServer.AddTool(mcp.SearchKitabTool, mcpHandler.HandleSearchKitab)
-	mcpServer.AddTool(mcp.ListKategoriTool, mcpHandler.HandleListKategori)
-	mcpServer.AddTool(mcp.SearchElasticTool, mcpHandler.HandleSearchElastic)
 
-	slog.Info("MCP server initialized", "tools", 6)
+	slog.Info("MCP server initialized", "tools", 1)
 
 	// --- Start Server based on transport ---
 	switch *transport {

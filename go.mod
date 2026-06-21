@@ -9,7 +9,8 @@ require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/mark3labs/mcp-go v0.54.1
 	github.com/redis/rueidis v1.0.74
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/text v0.38.0
 )
 
 require (
@@ -29,5 +30,4 @@ require (
 	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/net v0.51.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
 )
